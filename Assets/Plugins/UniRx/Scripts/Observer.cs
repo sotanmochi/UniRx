@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using UniRx.InternalUtil;
+using Unity.Profiling;
 
 namespace UniRx
 {
@@ -16,6 +17,20 @@ namespace UniRx
             else
             {
                 return new Subscribe<T>(onNext, onError, onCompleted);
+            }
+        }
+        
+        // NOTE: Unity Profiling
+        internal static IObserver<T> CreateSubscribeObserver<T>(Action<T> onNext, Action<Exception> onError, Action onCompleted, string profilerMarkerName)
+        {
+            // need compare for avoid iOS AOT
+            if (onNext == Stubs<T>.Ignore)
+            {
+                return new Subscribe_<T>(onError, onCompleted);
+            }
+            else
+            {
+                return new Subscribe<T>(onNext, onError, onCompleted, profilerMarkerName);
             }
         }
 
@@ -145,6 +160,11 @@ namespace UniRx
         // same as AnonymousObserver...
         class Subscribe<T> : IObserver<T>
         {
+            // NOTE: Unity Profiling
+            readonly ProfilerMarker onNextProfilerMarker;
+            readonly ProfilerMarker onErrorProfilerMarker;
+            readonly ProfilerMarker onCompletedProfilerMarker;
+
             readonly Action<T> onNext;
             readonly Action<Exception> onError;
             readonly Action onCompleted;
@@ -158,8 +178,19 @@ namespace UniRx
                 this.onCompleted = onCompleted;
             }
 
+            public Subscribe(Action<T> onNext, Action<Exception> onError, Action onCompleted, string profilerMarkerName)
+            {
+                this.onNext = onNext;
+                this.onError = onError;
+                this.onCompleted = onCompleted;
+                onNextProfilerMarker = new ProfilerMarker($"{profilerMarkerName}.{nameof(Subscribe<T>)}.OnNext");
+                onErrorProfilerMarker = new ProfilerMarker($"{profilerMarkerName}.{nameof(Subscribe<T>)}.OnError");
+                onCompletedProfilerMarker = new ProfilerMarker($"{profilerMarkerName}.{nameof(Subscribe<T>)}.OnCompleted");
+            }
+
             public void OnNext(T value)
             {
+                using var autoScope = onNextProfilerMarker.Auto();
                 if (isStopped == 0)
                 {
                     onNext(value);
@@ -168,6 +199,7 @@ namespace UniRx
 
             public void OnError(Exception error)
             {
+                using var autoScope = onErrorProfilerMarker.Auto();
                 if (Interlocked.Increment(ref isStopped) == 1)
                 {
                     onError(error);
@@ -177,6 +209,7 @@ namespace UniRx
 
             public void OnCompleted()
             {
+                using var autoScope = onCompletedProfilerMarker.Auto();
                 if (Interlocked.Increment(ref isStopped) == 1)
                 {
                     onCompleted();
@@ -402,6 +435,30 @@ namespace UniRx
         }
     }
 
+    // NOTE: Unity Profiling
+    public static partial class ObservableExtensions
+    {
+        public static IDisposable Subscribe<T>(this IObservable<T> source, Action<T> onNext, string profilerMarkerName)
+        {
+            return source.Subscribe(Observer.CreateSubscribeObserver(onNext, Stubs.Throw, Stubs.Nop, profilerMarkerName));
+        }
+
+        public static IDisposable Subscribe<T>(this IObservable<T> source, Action<T> onNext, Action<Exception> onError, string profilerMarkerName)
+        {
+            return source.Subscribe(Observer.CreateSubscribeObserver(onNext, onError, Stubs.Nop, profilerMarkerName));
+        }
+
+        public static IDisposable Subscribe<T>(this IObservable<T> source, Action<T> onNext, Action onCompleted, string profilerMarkerName)
+        {
+            return source.Subscribe(Observer.CreateSubscribeObserver(onNext, Stubs.Throw, onCompleted, profilerMarkerName));
+        }
+
+        public static IDisposable Subscribe<T>(this IObservable<T> source, Action<T> onNext, Action<Exception> onError, Action onCompleted, string profilerMarkerName)
+        {
+            return source.Subscribe(Observer.CreateSubscribeObserver(onNext, onError, onCompleted, profilerMarkerName));
+        }
+    }
+
     public static partial class ObservableExtensions
     {
         public static IDisposable Subscribe<T>(this IObservable<T> source)
@@ -411,22 +468,54 @@ namespace UniRx
 
         public static IDisposable Subscribe<T>(this IObservable<T> source, Action<T> onNext)
         {
+#if DEVELOPMENT_BUILD || UNITY_EDITOR // NOTE: Unity Profiling
+            var callerFrame = new System.Diagnostics.StackFrame(1);
+            var callerClassType = callerFrame.GetMethod().ReflectedType;
+            var callerMethodName = callerFrame.GetMethod().Name;
+            var profilerMarkerName = $"{callerClassType?.Name}.{callerMethodName}";
+            return source.Subscribe(Observer.CreateSubscribeObserver(onNext, Stubs.Throw, Stubs.Nop, profilerMarkerName));
+#else
             return source.Subscribe(Observer.CreateSubscribeObserver(onNext, Stubs.Throw, Stubs.Nop));
+#endif
         }
 
         public static IDisposable Subscribe<T>(this IObservable<T> source, Action<T> onNext, Action<Exception> onError)
         {
+#if DEVELOPMENT_BUILD || UNITY_EDITOR // NOTE: Unity Profiling
+            var callerFrame = new System.Diagnostics.StackFrame(1);
+            var callerClassType = callerFrame.GetMethod().ReflectedType;
+            var callerMethodName = callerFrame.GetMethod().Name;
+            var profilerMarkerName = $"{callerClassType?.Name}.{callerMethodName}";
+            return source.Subscribe(Observer.CreateSubscribeObserver(onNext, onError, Stubs.Nop, profilerMarkerName));
+#else
             return source.Subscribe(Observer.CreateSubscribeObserver(onNext, onError, Stubs.Nop));
+#endif
         }
 
         public static IDisposable Subscribe<T>(this IObservable<T> source, Action<T> onNext, Action onCompleted)
         {
+#if DEVELOPMENT_BUILD || UNITY_EDITOR // NOTE: Unity Profiling
+            var callerFrame = new System.Diagnostics.StackFrame(1);
+            var callerClassType = callerFrame.GetMethod().ReflectedType;
+            var callerMethodName = callerFrame.GetMethod().Name;
+            var profilerMarkerName = $"{callerClassType?.Name}.{callerMethodName}";
+            return source.Subscribe(Observer.CreateSubscribeObserver(onNext, Stubs.Throw, onCompleted, profilerMarkerName));
+#else
             return source.Subscribe(Observer.CreateSubscribeObserver(onNext, Stubs.Throw, onCompleted));
+#endif
         }
 
         public static IDisposable Subscribe<T>(this IObservable<T> source, Action<T> onNext, Action<Exception> onError, Action onCompleted)
         {
+#if DEVELOPMENT_BUILD || UNITY_EDITOR // NOTE: Unity Profiling
+            var callerFrame = new System.Diagnostics.StackFrame(1);
+            var callerClassType = callerFrame.GetMethod().ReflectedType;
+            var callerMethodName = callerFrame.GetMethod().Name;
+            var profilerMarkerName = $"{callerClassType?.Name}.{callerMethodName}";
+            return source.Subscribe(Observer.CreateSubscribeObserver(onNext, onError, onCompleted, profilerMarkerName));
+#else
             return source.Subscribe(Observer.CreateSubscribeObserver(onNext, onError, onCompleted));
+#endif
         }
 
         public static IDisposable SubscribeWithState<T, TState>(this IObservable<T> source, TState state, Action<T, TState> onNext)
