@@ -472,7 +472,7 @@ namespace UniRx
             var callerFrame = new System.Diagnostics.StackFrame(1);
             var callerClassType = callerFrame.GetMethod().ReflectedType;
             var callerMethodName = callerFrame.GetMethod().Name;
-            var profilerMarkerName = $"{callerClassType?.Name}.{callerMethodName}";
+            var profilerMarkerName = $"{callerClassType?.Name}.{callerMethodName}.IObservable";
             return source.Subscribe(Observer.CreateSubscribeObserver(onNext, Stubs.Throw, Stubs.Nop, profilerMarkerName));
 #else
             return source.Subscribe(Observer.CreateSubscribeObserver(onNext, Stubs.Throw, Stubs.Nop));
@@ -485,7 +485,7 @@ namespace UniRx
             var callerFrame = new System.Diagnostics.StackFrame(1);
             var callerClassType = callerFrame.GetMethod().ReflectedType;
             var callerMethodName = callerFrame.GetMethod().Name;
-            var profilerMarkerName = $"{callerClassType?.Name}.{callerMethodName}";
+            var profilerMarkerName = $"{callerClassType?.Name}.{callerMethodName}.IObservable";
             return source.Subscribe(Observer.CreateSubscribeObserver(onNext, onError, Stubs.Nop, profilerMarkerName));
 #else
             return source.Subscribe(Observer.CreateSubscribeObserver(onNext, onError, Stubs.Nop));
@@ -498,7 +498,7 @@ namespace UniRx
             var callerFrame = new System.Diagnostics.StackFrame(1);
             var callerClassType = callerFrame.GetMethod().ReflectedType;
             var callerMethodName = callerFrame.GetMethod().Name;
-            var profilerMarkerName = $"{callerClassType?.Name}.{callerMethodName}";
+            var profilerMarkerName = $"{callerClassType?.Name}.{callerMethodName}.IObservable";
             return source.Subscribe(Observer.CreateSubscribeObserver(onNext, Stubs.Throw, onCompleted, profilerMarkerName));
 #else
             return source.Subscribe(Observer.CreateSubscribeObserver(onNext, Stubs.Throw, onCompleted));
@@ -511,7 +511,7 @@ namespace UniRx
             var callerFrame = new System.Diagnostics.StackFrame(1);
             var callerClassType = callerFrame.GetMethod().ReflectedType;
             var callerMethodName = callerFrame.GetMethod().Name;
-            var profilerMarkerName = $"{callerClassType?.Name}.{callerMethodName}";
+            var profilerMarkerName = $"{callerClassType?.Name}.{callerMethodName}.IObservable";
             return source.Subscribe(Observer.CreateSubscribeObserver(onNext, onError, onCompleted, profilerMarkerName));
 #else
             return source.Subscribe(Observer.CreateSubscribeObserver(onNext, onError, onCompleted));
